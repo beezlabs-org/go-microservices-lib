@@ -1,13 +1,13 @@
 package casbin
 
 import (
-	"os"
-	"sync"
 	pgadapter "github.com/casbin/casbin-pg-adapter"
 	"github.com/casbin/casbin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/go-pg/pg/v10"
+	"os"
+	"sync"
 )
 
 const DefaultTableName = "casbin_rule"
