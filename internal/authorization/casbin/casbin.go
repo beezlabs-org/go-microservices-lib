@@ -54,15 +54,22 @@ func InitCasbinAndGetEnforcer(dbSource interface{}, logger log.Logger, confPath 
 }
 
 func InitCasbinAndGetEnforcerWithCustomDB(dbConn string, ruleTable string, logger log.Logger, confPath string) *casbin.Enforcer {
+	db, err := getDBConnection(dbConn)
+	if err != nil {
+		_ = level.Error(logger).Log("exit", err)
+		os.Exit(1)
+	}
+	defer func(db *pg.DB) {
+		err := db.Close()
+		if err != nil {
+			_ = level.Error(logger).Log("exit", err)
+			os.Exit(1)
+		}
+	}(db)
 	once.Do(func() {
 		_ = level.Info(logger).Log("msg", "Initializing the casbin postgres adapter with custom db and table")
 		if ruleTable == "" {
 			ruleTable = DefaultTableName
-		}
-		db, err := getDBConnection(dbConn)
-		if err != nil {
-			_ = level.Error(logger).Log("exit", err)
-			os.Exit(1)
 		}
 		adaptor, err := pgadapter.NewAdapterByDB(db, pgadapter.WithTableName(ruleTable))
 		if err != nil {
@@ -74,6 +81,7 @@ func InitCasbinAndGetEnforcerWithCustomDB(dbConn string, ruleTable string, logge
 	svc := GetService()
 	setDefaultEnforcer(svc.GetNewEnforcer())
 	return svc.GetDefaultEnforcer()
+
 }
 
 func GetService() Service {
@@ -93,7 +101,6 @@ func getDBConnection(dbConn string) (*pg.DB, error) {
 	}
 
 	db := pg.Connect(opts)
-	defer db.Close()
 	return db, nil
 }
 
