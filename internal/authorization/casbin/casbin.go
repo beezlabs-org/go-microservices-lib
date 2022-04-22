@@ -5,9 +5,12 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/go-pg/pg/v10"
 	"os"
 	"sync"
 )
+
+const DefaultTableName = "casbin_rule"
 
 var once sync.Once
 var svc *casbinService
@@ -38,6 +41,23 @@ func InitCasbinAndGetEnforcer(dbSource interface{}, logger log.Logger, confPath 
 	once.Do(func() {
 		_ = level.Info(logger).Log("msg", "Initializing the casbin postgres adapter")
 		adaptor, err := pgadapter.NewAdapter(dbSource)
+		if err != nil {
+			os.Exit(1)
+		}
+		newCasbinService(adaptor, logger, confPath)
+	})
+	svc := GetService()
+	setDefaultEnforcer(svc.GetNewEnforcer())
+	return svc.GetDefaultEnforcer()
+}
+
+func InitCasbinAndGetEnforcerWithCustomDB(db *pg.DB, ruleTable string, logger log.Logger, confPath string) *casbin.Enforcer {
+	once.Do(func() {
+		_ = level.Info(logger).Log("msg", "Initializing the casbin postgres adapter with custom db and table")
+		if ruleTable == "" {
+			ruleTable = DefaultTableName
+		}
+		adaptor, err := pgadapter.NewAdapterByDB(db, pgadapter.WithTableName(ruleTable))
 		if err != nil {
 			os.Exit(1)
 		}
