@@ -60,6 +60,7 @@ func InitCasbinAndGetEnforcerWithCustomDB(db *pg.DB, ruleTable string, logger lo
 		}
 		adaptor, err := pgadapter.NewAdapterByDB(db, pgadapter.WithTableName(ruleTable))
 		if err != nil {
+			_ = level.Error(logger).Log("exit", err)
 			os.Exit(1)
 		}
 		newCasbinService(adaptor, logger, confPath)
