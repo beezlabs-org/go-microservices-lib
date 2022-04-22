@@ -1,6 +1,7 @@
 package casbin
 
 import (
+	"fmt"
 	pgadapter "github.com/casbin/casbin-pg-adapter"
 	"github.com/casbin/casbin/v2"
 	"github.com/go-kit/log"
@@ -52,11 +53,16 @@ func InitCasbinAndGetEnforcer(dbSource interface{}, logger log.Logger, confPath 
 	return svc.GetDefaultEnforcer()
 }
 
-func InitCasbinAndGetEnforcerWithCustomDB(db *pg.DB, ruleTable string, logger log.Logger, confPath string) *casbin.Enforcer {
+func InitCasbinAndGetEnforcerWithCustomDB(dbConn string, ruleTable string, logger log.Logger, confPath string) *casbin.Enforcer {
 	once.Do(func() {
 		_ = level.Info(logger).Log("msg", "Initializing the casbin postgres adapter with custom db and table")
 		if ruleTable == "" {
 			ruleTable = DefaultTableName
+		}
+		db, err := getDBConnection(dbConn)
+		if err != nil {
+			_ = level.Error(logger).Log("exit", err)
+			os.Exit(1)
 		}
 		adaptor, err := pgadapter.NewAdapterByDB(db, pgadapter.WithTableName(ruleTable))
 		if err != nil {
@@ -72,6 +78,23 @@ func InitCasbinAndGetEnforcerWithCustomDB(db *pg.DB, ruleTable string, logger lo
 
 func GetService() Service {
 	return svc
+}
+
+func getDBConnection(dbConn string) (*pg.DB, error) {
+	var opts *pg.Options
+	var err error
+	if dbConn != "" {
+		opts, err = pg.ParseURL(dbConn)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("invalid db connection string")
+	}
+
+	db := pg.Connect(opts)
+	defer db.Close()
+	return db, nil
 }
 
 func setDefaultEnforcer(enforcer *casbin.Enforcer) {
